@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { writeContract } from '@wagmi/core'
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import clsx from 'clsx';
 import {  TransactionExecutionError, parseEther } from 'viem';
@@ -8,6 +9,7 @@ import { useSimulateContract, useWaitForTransactionReceipt, useWriteContract } f
 import Button from '../../../../components/Button/Button';
 import { useLoveOnChainContract } from '../../../../hooks/contracts';
 import { useLoggedInUserCanAfford } from '../../../../hooks/useUserCanAfford';
+import {wagmiConfig} from '../../../../providers/OnchainProviders';
 import { TransactionSteps } from '../../ContractDemo';
 import OutOfGasStep from '../OutOfGasStep';
 import StartTransactionStep from '../StartTransactionStep';
@@ -68,60 +70,66 @@ function FormCommitToDate({
     },
   });
 
+  let txSuccess = false;
+
   useEffect(() => {
-    async function handleTransactionStatus() {
-      if (transactionStatus === 'error' && dataHash !== '') {
-        await handleOncomplete();
-        if (
-          errorLoveOnChain instanceof TransactionExecutionError &&
-          errorLoveOnChain.message.toLowerCase().includes('out of gas')
-        ) {
-          setTransactionStep(TransactionSteps.OUT_OF_GAS_STEP);
-        } else {
-          setTransactionStep(null);
-        }
-      } else if (transactionStatus === 'success' && dataHash !== '') {
-        await handleOncomplete();
-        setDataHash('');
+      if (txSuccess) {
         setTransactionStep(TransactionSteps.TRANSACTION_COMPLETE_STEP);
+        console.log(transactionStep);
       }
-    }
-    void handleTransactionStatus();
-  }, [
-    dataHash,
-    errorLoveOnChain,
-    handleOncomplete,
-    setTransactionStep,
-    transactionStatus,
-  ]);
+  }, [txSuccess, setTransactionStep, transactionStep]);
 
-  const {writeContract} = useWriteContract(); 
-
-  const handleSubmit = useCallback(
-    (event: { preventDefault: () => void }) => {
+  const confirmAttendance = useCallback(
+    async (event: { preventDefault: () => void }) => {
       event.preventDefault();
         console.log('Commiting');
-        writeContract({
+          await writeContract(wagmiConfig, {
+            address: '0x5271F6dfE8080c1dc6E110E83D8687b54fAf1f9c',
+            abi: contract.abi,
+            functionName: 'confirmAttendanceInt',
+            args: [
+                'anika-ana',
+                '0x4046aF2e421651CFd6080B85A96d200be91C676B',
+            ],
+          });
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        await writeContract(wagmiConfig, {
           address: '0x5271F6dfE8080c1dc6E110E83D8687b54fAf1f9c',
           abi: contract.abi,
-          functionName: 'initDate',
+          functionName: 'confirmAttendanceInt',
           args: [
               'anika-ana',
-              '0x4046aF2e421651CFd6080B85A96d200be91C676B',
-              '0xBa6618c6E109cA31F7E22e80557117f9813D5b49'
-          ]
+              '0xBa6618c6E109cA31F7E22e80557117f9813D5b49',
+          ],
         });
+        
+    },
+    [contract.abi],
+  );
 
-        writeContract({
-          address: '0x5271F6dfE8080c1dc6E110E83D8687b54fAf1f9c',
-          abi: contract.abi,
-          functionName: 'stake',
-          args: [
-              'anika-ana',
-          ]
-        });
+  const handleSubmit = useCallback(
 
-        writeContract({
+    async (event: { preventDefault: () => void }) => {
+
+      txSuccess = false;
+      event.preventDefault();
+        console.log('Commiting');
+          await writeContract(wagmiConfig, {
+            address: '0x5271F6dfE8080c1dc6E110E83D8687b54fAf1f9c',
+            abi: contract.abi,
+            functionName: 'stakeInt',
+            args: [
+                'anika-ana',
+                '0x4046aF2e421651CFd6080B85A96d200be91C676B',
+                BigInt(100),
+            ],
+            value: parseEther(String(MIN_STAKE)),
+          });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        await writeContract(wagmiConfig, {
           address: '0x5271F6dfE8080c1dc6E110E83D8687b54fAf1f9c',
           abi: contract.abi,
           functionName: 'stakeInt',
@@ -129,17 +137,21 @@ function FormCommitToDate({
               'anika-ana',
               '0xBa6618c6E109cA31F7E22e80557117f9813D5b49',
               BigInt(100),
-          ]
+          ],
+          value: parseEther(String(MIN_STAKE)),
         });
+
+        txSuccess = true
+        
         //loveOnChain?.(loveOnChainData?.request);
-        //setTransactionStep(TransactionSteps.TRANSACTION_COMPLETE_STEP);
+        setTransactionStep(TransactionSteps.TRANSACTION_COMPLETE_STEP);
         //setDataHash(dataLoveOnChain);
 
         //const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
         //  dataHash,
         //})
     },
-    [writeContract, loveOnChainData?.request, loveOnChain, dataLoveOnChain, setTransactionStep, contract.abi],
+    [contract.abi],
   );
 
   const submitButtonContent = useMemo(() => {
@@ -182,7 +194,7 @@ function FormCommitToDate({
       {transactionStep === TransactionSteps.START_TRANSACTION_STEP && <StartTransactionStep />}
 
       {transactionStep === TransactionSteps.TRANSACTION_COMPLETE_STEP && (
-        <TransactionCompleteStep stake={MIN_STAKE}/>
+        <TransactionCompleteStep stake={MIN_STAKE} confirmAttendance={confirmAttendance}/>
       )}
 
       {transactionStep === TransactionSteps.OUT_OF_GAS_STEP && (
@@ -194,7 +206,7 @@ function FormCommitToDate({
           <h2 className="mb-5 w-full text-center text-2xl font-semibold text-white lg:text-left">
             Say no to ghosting!
           </h2>
-          <form onSubmit={handleSubmit} className="w-full">
+          <form className="w-full">
               {warningContent ? (
                 <div className="my-3 flex items-center justify-center">
                   <div className="mr-2">

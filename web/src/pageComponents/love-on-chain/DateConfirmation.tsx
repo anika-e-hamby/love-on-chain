@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { CURR_USER } from '../../mocks/userMocks';
 import {Invite} from '../../types'
 import CommitToDateFormStep from './steps/LoveOnChainFormStep/CommitToDateStep';
+import TransactionCompleteStep from './steps/TransactionCompleteStep';
 
 type DateConfirmationProps = {
     dateInvite: Invite;
@@ -11,11 +12,14 @@ type DateConfirmationProps = {
 export enum TransactionSteps {
     START_TRANSACTION_STEP,
     TRANSACTION_COMPLETE_STEP,
+    CONFIRM_ATTENDANCE_STEP,
     OUT_OF_GAS_STEP,
   }
 
 export default function DateConfirmation({dateInvite}: DateConfirmationProps) {
     const [transactionStep, setTransactionStep] = useState<TransactionSteps | null>(null);
+    
+
     return (
         <div className='flex flex-col justify-center gap-2'>
             <div className='flex flex-row gap-2'>
