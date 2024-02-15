@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { writeContract } from '@wagmi/core'
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import clsx from 'clsx';
 import {  TransactionExecutionError, parseEther } from 'viem';
@@ -8,6 +9,7 @@ import { useSimulateContract, useWaitForTransactionReceipt, useWriteContract } f
 import Button from '../../../../components/Button/Button';
 import { useLoveOnChainContract } from '../../../../hooks/contracts';
 import { useLoggedInUserCanAfford } from '../../../../hooks/useUserCanAfford';
+import {wagmiConfig} from '../../../../providers/OnchainProviders';
 import { TransactionSteps } from '../../ContractDemo';
 import OutOfGasStep from '../OutOfGasStep';
 import StartTransactionStep from '../StartTransactionStep';
@@ -95,13 +97,12 @@ function FormCommitToDate({
     transactionStatus,
   ]);
 
-  const {writeContract} = useWriteContract(); 
 
   const handleSubmit = useCallback(
-    (event: { preventDefault: () => void }) => {
+    async (event: { preventDefault: () => void }) => {
       event.preventDefault();
         console.log('Commiting');
-        writeContract({
+        await writeContract(wagmiConfig, {
           address: '0x5271F6dfE8080c1dc6E110E83D8687b54fAf1f9c',
           abi: contract.abi,
           functionName: 'initDate',
@@ -112,7 +113,7 @@ function FormCommitToDate({
           ]
         });
 
-        writeContract({
+        await writeContract(wagmiConfig, {
           address: '0x5271F6dfE8080c1dc6E110E83D8687b54fAf1f9c',
           abi: contract.abi,
           functionName: 'stake',
@@ -121,7 +122,7 @@ function FormCommitToDate({
           ]
         });
 
-        writeContract({
+        await writeContract(wagmiConfig, {
           address: '0x5271F6dfE8080c1dc6E110E83D8687b54fAf1f9c',
           abi: contract.abi,
           functionName: 'stakeInt',
@@ -139,7 +140,7 @@ function FormCommitToDate({
         //  dataHash,
         //})
     },
-    [writeContract, loveOnChainData?.request, loveOnChain, dataLoveOnChain, setTransactionStep, contract.abi],
+    [contract.abi],
   );
 
   const submitButtonContent = useMemo(() => {
